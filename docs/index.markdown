@@ -4,3 +4,11 @@
 
 layout: home
 ---
+
+### A HEADER
+
+Some text here for testing?
+
+[A link](about)
+
+[Another link](three_test.html)
