@@ -28,7 +28,7 @@ twitter_username: squirrelbaffler
 github_username:  squirrelbaffler
 
 # Build settings
-theme: minima
+theme: jekyll-theme-slate
 plugins:
   - jekyll-feed
 
