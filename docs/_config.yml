@@ -28,9 +28,10 @@ twitter_username: squirrelbaffler
 github_username:  squirrelbaffler
 
 # Build settings
-remote_theme: pages-themes/cayman@v0.2.0
+theme: pages-themes/cayman@v0.2.0
 plugins:
-- jekyll-remote-theme
+  - jekyll-remote-theme
+  - jekyll-feed
 
 # Exclude from processing.
 # The following items will not be processed, by default.
