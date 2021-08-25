@@ -22,15 +22,15 @@ title: Computer Animation
 email: tdl818@rit.edu
 description: >- # this means to ignore newlines until "baseurl:"
   This site is a display site for work done for CSCI 712: Computer Animation
-baseurl: "about" # the subpath of your site, e.g. /blog
+baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 twitter_username: squirrelbaffler
-github_username:  squirrelbaffler
+github_username:  xantos117
 
 # Build settings
-theme: jekyll-theme-slate
+remote-theme: pages-themes/slate@v0.2.0
 plugins:
-  - jekyll-feed
+  - jekyll-remote-theme
 
 # Exclude from processing.
 # The following items will not be processed, by default.
