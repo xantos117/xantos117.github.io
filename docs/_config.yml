@@ -28,9 +28,9 @@ twitter_username: squirrelbaffler
 github_username:  squirrelbaffler
 
 # Build settings
-theme: pages-themes/slate@v0.2.0
+theme: minima
 plugins:
-  - jekyll-remote-theme
+  - jekyll-feed
 
 # Exclude from processing.
 # The following items will not be processed, by default.
