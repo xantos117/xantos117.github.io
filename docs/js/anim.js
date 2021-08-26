@@ -12,6 +12,8 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
+var anim = false;
+
 function animate() {
     cube.rotation.x += 0.01;
     cube.rotation.y += 0.01;	
@@ -19,4 +21,7 @@ function animate() {
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
 }
-animate();
+
+if(anim) {
+    animate();
+}
