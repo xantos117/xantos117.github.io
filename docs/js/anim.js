@@ -12,6 +12,13 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
+document.addEventListener('keydown', (e) => {
+    if(!e.repeat)
+        console.log('Key "${e.key}" pressed  [event: keydown]');
+    else
+        console.log('Key "${e.key} is held down.');
+})
+
 var anim = false;
 
 function animate() {
@@ -22,6 +29,6 @@ function animate() {
     renderer.render( scene, camera );
 }
 
-if(anim) {
+if(anim)
     animate();
-}
+
