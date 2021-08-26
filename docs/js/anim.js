@@ -12,23 +12,27 @@ const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
-document.addEventListener('keydown', (e) => {
-    if(!e.repeat)
-        console.log('Key "${e.key}" pressed  [event: keydown]');
-    else
-        console.log('Key "${e.key} is held down.');
-})
 
 var anim = false;
 
+window.addEventListener('keydown', (e) => {
+    if(!e.repeat) {
+        console.log('Key "${e.key}" pressed  [event: keydown]');
+        anim = !anim;
+    }
+    else {
+        console.log('Key "${e.key} is held down.');
+    }
+})
 function animate() {
-    cube.rotation.x += 0.01;
-    cube.rotation.y += 0.01;	
-    camera.rotation.x += 0.01;
+    if(anim) {
+        cube.rotation.x += 0.01;
+        cube.rotation.y += 0.01;	
+        //camera.rotation.x += 0.01;
+    }
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
 }
 
-if(anim)
-    animate();
+animate();
 
