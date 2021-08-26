@@ -15,6 +15,7 @@ document.body.appendChild( renderer.domElement );
 function animate() {
     cube.rotation.x += 0.01;
     cube.rotation.y += 0.01;	
+    camera.rotation.x += 0.01;
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
 }
