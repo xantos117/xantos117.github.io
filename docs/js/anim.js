@@ -54,6 +54,16 @@ let anim_button = {Animate:function(){
 
 gui.add(anim_button,'Animate');
 
+let reset_button = {Reset:function(){
+    doesAnimate.value = false;
+    dt = 0;
+    // reset all the values we change.
+    cube.rotation.y = 0;
+    cube.position.x = 0;
+    cube.position.y = 0;
+}}
+
+gui.add(reset_button,'Reset');
 // window.addEventListener('keydown', (e) => {
 //     if(!e.repeat) {
 //         console.log('Key "${e.key}" pressed  [event: keydown]');
@@ -79,6 +89,7 @@ function animate() {
         //console.log(initTime);
         console.log(dt.toString());
     }
+
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
 }
