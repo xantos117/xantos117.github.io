@@ -61,7 +61,7 @@ let reset_button = {Reset:function(){
     cube.rotation.y = 0;
     cube.position.x = 0;
     cube.position.y = 0;
-}}
+}};
 
 gui.add(reset_button,'Reset');
 // window.addEventListener('keydown', (e) => {
