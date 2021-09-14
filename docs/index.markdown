@@ -5,10 +5,11 @@
 layout: home
 ---
 
-### A HEADER
+### RIT CS MS Projects
 
 Some text here for testing?
 
-[A link](about)
+[About](about)
 
-[Another link](three_test.html)
+[CSCI 712](three_test.html)
+
