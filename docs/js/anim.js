@@ -1,6 +1,20 @@
 import * as dat from "../lib/dat.gui.module.js";
 
 // Our Javascript will go here.
+
+class KeyFrame {
+    constructor(time, x, y, z, xa, ya, za, theta) {
+        this.time = time;
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.xa = xa;
+        this.ya = ya;
+        this.za = za;
+        this.theta = theta;
+    }
+}
+
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 0.1, 2000 );
 const geometry = new THREE.BoxGeometry();
@@ -30,6 +44,34 @@ light2.position.y = 5;
 light2.position.z = 5;
 //sphere.position.x = 5;
 
+// text file reading function taken from https://stackoverflow.com/a/14446538/14727262
+
+var file = '../keyframe-input.txt';
+var rawFile = new XMLHttpRequest();
+var allText = 'ERROR';
+rawFile.open("GET", file, false);
+rawFile.onreadystatechange = function ()
+{
+    if(rawFile.readyState === 4)
+    {
+        if(rawFile.status === 200 || rawFile.status == 0)
+        {
+            allText = rawFile.responseText;
+        }
+    }
+}
+rawFile.send(null);
+
+const lines = allText.split('\n');
+var kfs = [];
+
+for (const l of lines) {
+    var params = l.split(' ');
+    //console.log(params);
+    kfs.push(new KeyFrame(params[0], params[2], params[3], params[4], params[5], params[6], params[7], params[8]));
+}
+console.log(kfs);
+
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
@@ -42,9 +84,9 @@ let doesAnimate = {
   };
 let dt = 0;
 
-// let animToggle = gui.add(doesAnimate, "value").name("Move with time?").listen();
-
-// animToggle.onChange(function(){ initTime = Date.now(); });
+let doesKeyFrame = {
+    value: false,
+};
 
 let anim_button = {Animate:function(){
     initTime = Date.now();
@@ -52,7 +94,15 @@ let anim_button = {Animate:function(){
     dt = 0;
 }};
 
+let kf_button = {KeyFrame:function() {
+    initTime = Date.now();
+    doesKeyFrame.value = true;
+    doesAnimate.value = true;
+    dt = 0;
+}}
+
 gui.add(anim_button,'Animate');
+gui.add(kf_button,'KeyFrame');
 
 let reset_button = {Reset:function(){
     doesAnimate.value = false;
@@ -60,7 +110,7 @@ let reset_button = {Reset:function(){
     // reset all the values we change.
     cube.rotation.y = 0;
     cube.position.x = 0;
-    cube.position.y = 0;
+    cube.position.z = 0;
 }};
 
 gui.add(reset_button,'Reset');
@@ -77,9 +127,12 @@ function deg_to_rad(degrees) {
     return degrees * (Math.PI/180);
 }
 
+var cur_kf = 0;
+var next_kf = 1;
+
 
 function animate() {
-    if(doesAnimate.value && (dt/1000 <= 20)) {
+    if(doesAnimate.value && !doesKeyFrame.value && (dt/1000 <= 20)) {
         dt = Date.now() - initTime;
         //cube.rotation.x += 0.01;
         cube.rotation.y = deg_to_rad(18*(dt/1000));	
@@ -88,6 +141,24 @@ function animate() {
         //camera.rotation.x += 0.01;
         //console.log(initTime);
         console.log(dt.toString());
+    }
+    if(doesAnimate.value && doesKeyFrame.value && (dt/1000 <= 20)) {
+        dt = Date.now() - initTime;
+        if(dt/1000 >= kfs[next_kf].time) {
+            cur_kf = next_kf;
+            next_kf++;
+            if(next_kf >= kfs.length) {
+                next_kf = 0;
+                doesAnimate.value = false;
+                doesKeyFrame.value = false;
+            }
+        }
+        cube.position.x = kfs[cur_kf].x;
+        cube.position.y = kfs[cur_kf].y;
+        cube.position.z = kfs[cur_kf].z;
+        cube.rotation.x = kfs[cur_kf].xa;
+        cube.rotation.y = kfs[cur_kf].ya;
+        cube.rotation.z = kfs[cur_kf].za;
     }
 
     requestAnimationFrame( animate );
