@@ -6,10 +6,9 @@ class KeyFrame {
     constructor(time, x, y, z, xa, ya, za, theta) {
         this.time = parseFloat(time);
         this.position = new THREE.Vector3(parseFloat(x),parseFloat(y),parseFloat(z));
-        this.xa = parseFloat(xa);
-        this.ya = parseFloat(ya);
-        this.za = parseFloat(za);
-        this.theta = parseFloat(theta);
+        this.quat = new THREE.Quaternion();
+        var axis = new THREE.Vector3(parseFloat(xa), parseFloat(ya), parseFloat(za));
+        this.quat.setFromAxisAngle( axis.normalize(), parseFloat(theta));
     }
 }
 
@@ -17,7 +16,8 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 35, window.innerWidth / window.innerHeight, 0.1, 2000 );
 const geometry = new THREE.BoxGeometry();
 const geometry2 = new THREE.SphereGeometry();
-const material = new THREE.MeshPhongMaterial({shininess: 10, color: 0x5F9EA0});
+//const material = new THREE.MeshPhongMaterial({shininess: 10, color: 0x5F9EA0});
+const material = new THREE.MeshNormalMaterial();
 const cube = new THREE.Mesh( geometry, material );
 //const sphere = new THREE.Mesh(geometry2, material );
 const light1 = new THREE.AmbientLight({hex: 0xffffff, intensity: 0.25});
@@ -33,9 +33,10 @@ scene.add( cube );
 scene.add( light1 );
 scene.add( light2 );
 
-camera.position.z = 250;
-camera.position.x = 50;
+camera.position.z = -250;
+camera.position.x = -50;
 camera.position.y = 50;
+camera.rotation.y = Math.PI;
 
 light2.position.x = 5;
 light2.position.y = 5;
@@ -127,6 +128,8 @@ function deg_to_rad(degrees) {
 
 var cur_kf = 0;
 var next_kf = 1;
+//cube.position = kfs[cur_kf].position;
+//cube.quaternion = kfs[cur_kf].quat;
 
 
 function animate() {
@@ -134,7 +137,7 @@ function animate() {
         dt = Date.now() - initTime;
         //cube.rotation.x += 0.01;
         cube.rotation.y = deg_to_rad(18*(dt/1000));	
-        cube.position.x = 5*(dt/1000);
+        cube.position.x = -5*(dt/1000);
         cube.position.y = 5*(dt/1000);
         //camera.rotation.x += 0.01;
         //console.log(initTime);
@@ -153,16 +156,12 @@ function animate() {
         }
         var curTime = dt - kfs[cur_kf].time * 1000;
         var frameGap = (kfs[next_kf].time - kfs[cur_kf].time) * 1000;
-        //console.log(curTime);
         var u = curTime/frameGap;
         cube.position.lerpVectors(kfs[cur_kf].position,kfs[next_kf].position,u);
-        console.log(cube.position);
-        // cube.position.x = kfs[cur_kf].x;
-        // cube.position.y = kfs[cur_kf].y;
-        // cube.position.z = kfs[cur_kf].z;
-        cube.rotation.x = kfs[cur_kf].xa;
-        cube.rotation.y = kfs[cur_kf].ya;
-        cube.rotation.z = kfs[cur_kf].za;
+        // cube.rotation.x = kfs[cur_kf].xa;
+        // cube.rotation.y = kfs[cur_kf].ya;
+        // cube.rotation.z = kfs[cur_kf].za;
+        cube.quaternion.slerpQuaternions(kfs[cur_kf].quat, kfs[next_kf].quat, u);
     }
 
     requestAnimationFrame( animate );
