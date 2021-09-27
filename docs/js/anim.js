@@ -4,14 +4,12 @@ import * as dat from "../lib/dat.gui.module.js";
 
 class KeyFrame {
     constructor(time, x, y, z, xa, ya, za, theta) {
-        this.time = time;
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.xa = xa;
-        this.ya = ya;
-        this.za = za;
-        this.theta = theta;
+        this.time = parseFloat(time);
+        this.position = new THREE.Vector3(parseFloat(x),parseFloat(y),parseFloat(z));
+        this.xa = parseFloat(xa);
+        this.ya = parseFloat(ya);
+        this.za = parseFloat(za);
+        this.theta = parseFloat(theta);
     }
 }
 
@@ -153,9 +151,15 @@ function animate() {
                 doesKeyFrame.value = false;
             }
         }
-        cube.position.x = kfs[cur_kf].x;
-        cube.position.y = kfs[cur_kf].y;
-        cube.position.z = kfs[cur_kf].z;
+        var curTime = dt - kfs[cur_kf].time * 1000;
+        var frameGap = (kfs[next_kf].time - kfs[cur_kf].time) * 1000;
+        //console.log(curTime);
+        var u = curTime/frameGap;
+        cube.position.lerpVectors(kfs[cur_kf].position,kfs[next_kf].position,u);
+        console.log(cube.position);
+        // cube.position.x = kfs[cur_kf].x;
+        // cube.position.y = kfs[cur_kf].y;
+        // cube.position.z = kfs[cur_kf].z;
         cube.rotation.x = kfs[cur_kf].xa;
         cube.rotation.y = kfs[cur_kf].ya;
         cube.rotation.z = kfs[cur_kf].za;
