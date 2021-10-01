@@ -11,5 +11,7 @@ Some text here for testing?
 
 [About](about)
 
-[CSCI 712](three_test.html)
+**CSCI 712:**
+* [Test of Three.js](anim_setup.html)
+* [Animation using keyframes](keyframes.html)
 
