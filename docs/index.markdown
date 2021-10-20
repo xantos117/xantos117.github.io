@@ -14,4 +14,5 @@ Some text here for testing?
 **CSCI 712:**
 * [Test of Three.js](anim_setup.html)
 * [Animation using keyframes](keyframes.html)
+* [Billiards Animation](billiards.html)
 
