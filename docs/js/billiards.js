@@ -5,7 +5,8 @@ let minVelocity = {
   };
 
 class physobject {
-    constructor(obj, objMass, initVel, initAcc, initAngVel, inertia, objType) {
+    constructor(obj, objMass, initVel = new THREE.Vector3(), initAcc = new THREE.Vector3(), 
+                initAngVel = new THREE.Vector3(), inertia = new THREE.Vector3(), sForce = new THREE.Vector3(), objType) {
         this.obj = obj;
         this.mass = objMass;
         this.vel = initVel;
@@ -22,6 +23,7 @@ class physobject {
         this.pMomentum = this.momentum;
         this.pAngVel = this.angVel;
         this.pAngMomentum = this.angMoment;
+        this.storedForce  = sForce;
     }
 
     storePriors() {
@@ -49,8 +51,9 @@ class physobject {
         this.obj.position.add(velCopy);
         // get to rotation later, I guess? I don't know how to multiply a quaternion by a scalar in THREEJS
         // this.obj.applyQuaternion(this.obj.quaternion.multiply(new THREE.Quaternion(0,this.angVel.x,this.angVel.y,this.angVel.z)))
-        force.multiplyScalar(dt);
-        this.momentum.add(force);
+        let fCopy = (new THREE.Vector3()).copy(force);
+        fCopy.multiplyScalar(dt);
+        this.momentum.add(fCopy);
         // this.angMoment.add(torque.multiplyScalar(dt));
     }
 
@@ -62,6 +65,22 @@ class physobject {
         if(speed<minVelocity.value){
             this.vel = new THREE.Vector3();
         }
+    }
+
+    storeForce(f_in) {
+        this.storedForce.add(f_in);
+    }
+
+    zeroForce() {
+        this.storedForce.set(0,0,0);
+    }
+
+    resetPosition(pos) {
+        this.obj.position.copy(pos);
+        this.vel.copy(new THREE.Vector3());
+        this.momentum.copy(new THREE.Vector3());
+        this.angVel.copy(new THREE.Vector3());
+        this.angMoment.copy(new THREE.Vector3());
     }
 }
 
@@ -92,39 +111,49 @@ redFolder.add(ball1.position,'y');
 redFolder.add(ball1.position,'z');
 redFolder.open();
 
+let blueFolder = gui.addFolder('Blue Ball');
+blueFolder.add(ball2.position,'x');
+blueFolder.add(ball2.position,'y');
+blueFolder.add(ball2.position,'z');
+blueFolder.open();
+
 camera.position.z = 0;
 camera.position.y = 4;
 camera.position.x = 0;
 camera.rotation.x = -Math.PI/2;
 
 // initial conditions:
-let cueInitPos = new THREE.Vector3(cue.position);
-let ball1InitPos = new THREE.Vector3(ball1.position);
-let ball2InitPos = new THREE.Vector3(ball2.position);
+let cueInitPos = (new THREE.Vector3()).copy(cue.position);
+let ball1InitPos = (new THREE.Vector3()).copy(ball1.position);
+let ball2InitPos = (new THREE.Vector3()).copy(ball2.position);
 
-let cueInitRot = new THREE.Vector3(cue.rotation);
-let ball1InitRot = new THREE.Vector3(ball1.rotation);
-let ball2InitRot = new THREE.Vector3(ball2.rotation);
+let cueInitRot = (new THREE.Vector3()).copy(cue.rotation);
+let ball1InitRot = (new THREE.Vector3()).copy(ball1.rotation);
+let ball2InitRot = (new THREE.Vector3()).copy(ball2.rotation);
 
-let cueObj = new physobject(cue,ballMass,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'sphere');
-let ball1Obj = new physobject(ball1,ballMass,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'sphere');
-let ball2Obj = new physobject(ball2,ballMass,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'sphere');
+let cueObj = new physobject(cue,ballMass,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'sphere');
+let ball1Obj = new physobject(ball1,ballMass,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'sphere');
+let ball2Obj = new physobject(ball2,ballMass,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'sphere');
 
 cueObj.obj.geometry.computeBoundingSphere();
 ball1Obj.obj.geometry.computeBoundingSphere();
 ball2Obj.obj.geometry.computeBoundingSphere();
 cueObj.obj.frustumCulled = false;
+ball1Obj.obj.frustumCulled = false;
+ball2Obj.obj.frustumCulled = false;
 
 let activeObjList = [cueObj,ball1Obj,ball2Obj];
 
-let leftWall = new physobject(leftcube,10000,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'cube');
-let topWall = new physobject(topcube,10000,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'cube');
-let rightWall = new physobject(rightcube,10000,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'cube');
-let botWall = new physobject(botcube,10000,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'cube');
+let leftWall = new physobject(leftcube,10000,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'cube');
+let topWall = new physobject(topcube,10000,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'cube');
+let rightWall = new physobject(rightcube,10000,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'cube');
+let botWall = new physobject(botcube,10000,new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),new THREE.Vector3(),'cube');
 
 let boxBounds = [leftWall,topWall,rightWall,botWall];
 
 let raycaster = new THREE.Raycaster();
+
+let curForces = new THREE.Vector3();
 
 
 
@@ -142,10 +171,11 @@ let doesSimulate = {
   };
 
 let iVel = {
-    x:2,
+    x:-2,
     y:0,
-    z:0,
+    z:2,
 };
+
 
 const hex = 0xffff00;
 const iDir = new THREE.Vector3(iVel.x, iVel.y, iVel.z);
@@ -153,10 +183,12 @@ const iDir = new THREE.Vector3(iVel.x, iVel.y, iVel.z);
 const arrowHelper = new THREE.ArrowHelper( iDir, cue.position, iDir.length(), hex);
 scene.add( arrowHelper );
 
-let initVelFolder = gui.addFolder('Initial Velocity');
+let initVelFolder = gui.addFolder('Initial Force');
 initVelFolder.add(iVel,'x');
 initVelFolder.add(iVel,'y');
 initVelFolder.add(iVel,'z');
+//initVelFolder.add(iForceScalar,'force');
+initVelFolder.open();
 
 let frameTime = 0;
 
@@ -167,11 +199,7 @@ let sim_button = {Simulate:function(){
     frameTime = initTime;
     cueObj.vel = new THREE.Vector3(iVel.x,iVel.y,iVel.z);
     cueObj.momentum.copy(cueObj.vel);
-    cueObj.momentum.multiplyScalar(cueObj.mass);
-    rightcube.geometry.boundingBox.applyMatrix4(rightcube.matrixWorld);
-    leftcube.geometry.boundingBox.applyMatrix4(leftcube.matrixWorld);
-    topcube.geometry.boundingBox.applyMatrix4(topcube.matrixWorld);
-    botcube.geometry.boundingBox.applyMatrix4(botcube.matrixWorld);
+    cueObj.momentum.multiplyScalar(cueObj.mass);    
     arrowHelper.visible = false;
 }};
 
@@ -181,6 +209,11 @@ let reset_button = {Reset:function(){
     doesSimulate.value = false;
     doesAnimate.value = false;
     initTime = 0;
+    cueObj.resetPosition(cueInitPos);
+    ball1Obj.resetPosition(ball1InitPos);
+    ball2Obj.resetPosition(ball2InitPos);
+
+    arrowHelper.visible = true;
 }};
 
 gui.add(reset_button,'Reset');
@@ -192,10 +225,15 @@ function setupInitStates() {
 function deg_to_rad(degrees) {
     return degrees * (Math.PI/180);
 }
+renderer.render(scene,camera);
+rightcube.geometry.boundingBox.applyMatrix4(rightcube.matrixWorld);
+leftcube.geometry.boundingBox.applyMatrix4(leftcube.matrixWorld);
+topcube.geometry.boundingBox.applyMatrix4(topcube.matrixWorld);
+botcube.geometry.boundingBox.applyMatrix4(botcube.matrixWorld);
 
 function findCollision(obj1,obj2,f1,t1,st,dt) {
-    if(dt < 0.001) {
-        return st + dt;
+    if(dt < 0.00001) {
+        return st;
     }
     obj1.integrate(f1,t1,st + dt/2);
     let nt = st + dt/2;
@@ -230,7 +268,8 @@ function animate() {
             // store current state of object
             element.storePriors();
             // calculate forces, torques
-            let curForces = new THREE.Vector3();
+
+            curForces.add(element.storedForce);
             let curTorques = new THREE.Vector3();
             let elVel = new THREE.Vector3();
             let speed = Math.abs(element.vel.length());
@@ -261,6 +300,32 @@ function animate() {
                     el2.obj.geometry.boundingSphere.center = el2.obj.position;
                     if(element.obj.geometry.boundingSphere.intersectsSphere(el2.obj.geometry.boundingSphere)){
                         // do some stuff
+                        element.resetToPriors();
+                        let nt = findCollision(element,el2,curForces,curTorques,0,dt);
+                        element.integrate(curForces,curTorques,nt);
+
+                        let collisionDir = new THREE.Vector3();
+                        collisionDir.subVectors(el2.obj.position, element.obj.position);
+                        collisionDir.normalize();
+                        let negColDir = new THREE.Vector3();
+                        negColDir.copy(collisionDir);
+                        negColDir.negate();
+                        let el1Dir = new THREE.Vector3();
+                        let el2Dir = new THREE.Vector3();
+                        // let vec1 = new THREE.Vector3();
+                        // let vec2 = new THREE.Vector3();
+                        // vec1.copy(element.vel);
+                        // vec2.copy(el2.vel);
+                        let impulseJmag = (element.mass/2) * (el2.vel.dot(negColDir) - element.vel.dot(collisionDir));
+                        el1Dir.copy(collisionDir);
+                        el1Dir.multiplyScalar(impulseJmag);
+                        el2Dir.copy(negColDir);
+                        el2Dir.multiplyScalar(impulseJmag);
+                        //el2Dir.negate();
+
+                        element.momentum.add(el1Dir);
+                        el2.momentum.add(el2Dir);
+
                         console.log("Sphere collision");
                     }
                 }
@@ -289,6 +354,7 @@ function animate() {
                 }
                 
             }
+            curForces = new THREE.Vector3();
         };
         activeObjList.forEach(element => {
             element.updateVels(new THREE.Vector3(),new THREE.Vector3());
