@@ -6,7 +6,7 @@ let minVelocity = {
 
 class physobject {
     constructor(obj, objMass, initVel = new THREE.Vector3(), initAcc = new THREE.Vector3(), 
-                initAngVel = new THREE.Vector3(), inertia = new THREE.Vector3(), sForce = new THREE.Vector3(), objType) {
+                initAngVel = new THREE.Vector3(), inertia = new THREE.Vector3(), sMomentum = new THREE.Vector3(), objType) {
         this.obj = obj;
         this.mass = objMass;
         this.vel = initVel;
@@ -23,7 +23,8 @@ class physobject {
         this.pMomentum = this.momentum;
         this.pAngVel = this.angVel;
         this.pAngMomentum = this.angMoment;
-        this.storedForce  = sForce;
+        this.storedMomentum  = sMomentum;
+        this.storedForce = new THREE.Vector3();
     }
 
     storePriors() {
@@ -44,17 +45,24 @@ class physobject {
         this.angMoment.copy(this.pAngMomentum);
     }
 
-    integrate(force,torque,dt) {
+    integrate(dt) {
         let velCopy = new THREE.Vector3();
         velCopy.copy(this.vel);
         velCopy.multiplyScalar(dt);
         this.obj.position.add(velCopy);
         // get to rotation later, I guess? I don't know how to multiply a quaternion by a scalar in THREEJS
         // this.obj.applyQuaternion(this.obj.quaternion.multiply(new THREE.Quaternion(0,this.angVel.x,this.angVel.y,this.angVel.z)))
-        let fCopy = (new THREE.Vector3()).copy(force);
+        
+    }
+
+    updateMomentum(dt) {
+        let fCopy = (new THREE.Vector3()).copy(this.storedForce);
         fCopy.multiplyScalar(dt);
         this.momentum.add(fCopy);
+        this.momentum.add(this.storedMomentum);
         // this.angMoment.add(torque.multiplyScalar(dt));
+        this.storedMomentum = new THREE.Vector3();
+        this.storedForce = new THREE.Vector3();
     }
 
     updateVels(impulseVel, impulseRot) {
@@ -67,12 +75,12 @@ class physobject {
         }
     }
 
-    storeForce(f_in) {
-        this.storedForce.add(f_in);
+    storeMomentum(rho_in) {
+        this.storedMomentum.add(rho_in);
     }
 
-    zeroForce() {
-        this.storedForce.set(0,0,0);
+    zeroMometum() {
+        this.storedMomentum.set(0,0,0);
     }
 
     resetPosition(pos) {
@@ -138,6 +146,9 @@ let ball2Obj = new physobject(ball2,ballMass,new THREE.Vector3(),new THREE.Vecto
 cueObj.obj.geometry.computeBoundingSphere();
 ball1Obj.obj.geometry.computeBoundingSphere();
 ball2Obj.obj.geometry.computeBoundingSphere();
+cueObj.obj.geometry.boundingSphere.radius = ballRadius;
+ball1Obj.obj.geometry.boundingSphere.radius = ballRadius;
+ball2Obj.obj.geometry.boundingSphere.radius = ballRadius;
 cueObj.obj.frustumCulled = false;
 ball1Obj.obj.frustumCulled = false;
 ball2Obj.obj.frustumCulled = false;
@@ -154,6 +165,7 @@ let boxBounds = [leftWall,topWall,rightWall,botWall];
 let raycaster = new THREE.Raycaster();
 
 let curForces = new THREE.Vector3();
+let curTorques = new THREE.Vector3();
 
 
 
@@ -176,6 +188,18 @@ let iVel = {
     z:2,
 };
 
+let coeffRes = {
+    e:0.5,
+}
+
+let ballCoeffRes = {
+    e:0.98
+}
+
+let coeffFric = {
+    u:0.1
+}
+
 
 const hex = 0xffff00;
 const iDir = new THREE.Vector3(iVel.x, iVel.y, iVel.z);
@@ -189,6 +213,10 @@ initVelFolder.add(iVel,'y');
 initVelFolder.add(iVel,'z');
 //initVelFolder.add(iForceScalar,'force');
 initVelFolder.open();
+
+gui.add(coeffRes,'e').name('Coeff of Rest');
+gui.add(ballCoeffRes,'e').name('Ball CoR');
+gui.add(coeffFric,'u').name('Friction');
 
 let frameTime = 0;
 
@@ -235,13 +263,20 @@ function findCollision(obj1,obj2,f1,t1,st,dt) {
     if(dt < 0.00001) {
         return st;
     }
-    obj1.integrate(f1,t1,st + dt/2);
+    obj1.integrate(st + dt/2);
     let nt = st + dt/2;
     if(obj2.objType == 'cube'){
         if(obj1.obj.geometry.boundingSphere.intersectsBox(obj2.obj.geometry.boundingBox)){
             obj1.resetToPriors();
             nt = findCollision(obj1,obj2,f1,t1,st, dt/2);
         } else {
+            raycaster.set(obj1.obj.position, obj1.vel);
+            let intersects = raycaster.intersectObject(obj2.obj);
+            let faceNorm = intersects[0].face.normal;
+            if(faceNorm.length() - ballRadius < 0.00001 && faceNorm.length() - ballRadius > 0) {
+                obj1.resetToPriors();
+                return st;
+            }
             obj1.resetToPriors();
             nt = findCollision(obj1,obj2,f1,t1,nt,dt/2);
         }
@@ -251,6 +286,11 @@ function findCollision(obj1,obj2,f1,t1,st,dt) {
             obj1.resetToPriors();
             nt = findCollision(obj1,obj2,f1,t1,st, dt/2);
         } else {
+            let distBetween = obj1.obj.position.distanceTo(obj2.obj.position);
+            if( distBetween > 2*ballRadius && distBetween < (2 * ballRadius + 0.0001)) {
+                obj1.resetToPriors();
+                return st;
+            }
             obj1.resetToPriors();
             nt = findCollision(obj1,obj2,f1,t1,nt,dt/2);
         }
@@ -269,8 +309,8 @@ function animate() {
             element.storePriors();
             // calculate forces, torques
 
-            curForces.add(element.storedForce);
-            let curTorques = new THREE.Vector3();
+            //curForces.add(element.storedForce);
+            //let curTorques = new THREE.Vector3();
             let elVel = new THREE.Vector3();
             let speed = Math.abs(element.vel.length());
             if(speed>minVelocity.value){
@@ -279,11 +319,12 @@ function animate() {
                 elVel.negate();
                 curForces = new THREE.Vector3();
                 curForces.copy(elVel);
-                curForces.multiplyScalar(0.1*ballMass*9.8);
+                curForces.multiplyScalar(coeffFric.u*ballMass*9.8);
+                element.storedForce.add(curForces);
             }
             // this should primarily be friction, no?
             // integrate pos/rot
-            element.integrate(curForces,curTorques,dt);
+            element.integrate(dt);
             // s(t +Dt) = s(t) + v(t)Dt
             // q(t +Dt) = q(t) + 0.5 (w(t)q(t)) Dt
             // normalize q(t+Dt)
@@ -302,7 +343,7 @@ function animate() {
                         // do some stuff
                         element.resetToPriors();
                         let nt = findCollision(element,el2,curForces,curTorques,0,dt);
-                        element.integrate(curForces,curTorques,nt);
+                        element.integrate(nt);
 
                         let collisionDir = new THREE.Vector3();
                         collisionDir.subVectors(el2.obj.position, element.obj.position);
@@ -316,15 +357,19 @@ function animate() {
                         // let vec2 = new THREE.Vector3();
                         // vec1.copy(element.vel);
                         // vec2.copy(el2.vel);
-                        let impulseJmag = (element.mass/2) * (el2.vel.dot(negColDir) - element.vel.dot(collisionDir));
+                        let impulseJmag = (element.mass * (ballCoeffRes.e + 1)/2) * (el2.vel.dot(negColDir) - element.vel.dot(collisionDir));
                         el1Dir.copy(collisionDir);
                         el1Dir.multiplyScalar(impulseJmag);
                         el2Dir.copy(negColDir);
                         el2Dir.multiplyScalar(impulseJmag);
                         //el2Dir.negate();
 
-                        element.momentum.add(el1Dir);
-                        el2.momentum.add(el2Dir);
+                        if(el2 == ball1Obj) {
+                            console.log('Ball 1');
+                        }
+
+                        element.storedMomentum.add(el1Dir);
+                        el2.storedMomentum.add(el2Dir);
 
                         console.log("Sphere collision");
                     }
@@ -337,7 +382,7 @@ function animate() {
                     // do some stuff
                     element.resetToPriors();
                     let nt = findCollision(element,b,curForces,curTorques,0,dt);
-                    element.integrate(curForces,curTorques,nt);
+                    element.integrate(nt);
 
                     raycaster.set(element.obj.position, element.vel);
                     let intersects = raycaster.intersectObject(b.obj);
@@ -348,7 +393,7 @@ function animate() {
                     element.vel.copy(newVelDir);
                     // element.vel.multiplyScalar(0.5);
                     element.momentum = (new THREE.Vector3()).copy(newVelDir);
-                    element.momentum.multiplyScalar(0.5 * element.mass);
+                    element.momentum.multiplyScalar(coeffRes.e * element.mass);
                     // calculate impulse
                     console.log("Box collision");
                 }
@@ -356,6 +401,9 @@ function animate() {
             }
             curForces = new THREE.Vector3();
         };
+        activeObjList.forEach(element => {
+            element.updateMomentum(dt);
+        });
         activeObjList.forEach(element => {
             element.updateVels(new THREE.Vector3(),new THREE.Vector3());
         })

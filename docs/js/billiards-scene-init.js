@@ -33,6 +33,7 @@ cue.position.y += ballRadius;
 cue.position.z = -0.2;
 ball1.position.z = 0.2;
 ball1.position.y += ballRadius;
+ball1.position.x = -0.4;
 ball2.position.x = -0.2;
 ball2.position.y += ballRadius;
 //sphere.position.y = 4;
