@@ -15,4 +15,5 @@ Some text here for testing?
 * [Test of Three.js](anim_setup.html)
 * [Animation using keyframes](keyframes.html)
 * [Billiards Animation](billiards.html)
+* [Motion Capture](mocap.html)
 
