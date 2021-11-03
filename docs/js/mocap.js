@@ -132,7 +132,7 @@ class Joint {
                 cur_index += 2;
                 let offsetVals = lines[cur_index].trim().split('\t');
                 let lineName = offsetVals.shift();
-                if(lineName = 'OFFSET') {
+                if(lineName == 'OFFSET') {
                     let e = new EndSite(offsetVals,this);
                     this.joints.push(e);
                 }
@@ -146,23 +146,28 @@ class Joint {
     update() {
         //console.log("Updating "+this.name);
         let tempMat = new THREE.Matrix4();
+        let tRotMat = new THREE.Matrix4();
         this.mesh.rotation.set(0,0,0);
         //this.mesh.updateMatrix();
         this.mesh.updateMatrixWorld(true);
         if(this.parent) {
+            this.parent.mesh.updateMatrixWorld(true);
             this.line.updateMatrixWorld(true);
             tempMat.multiplyMatrices(this.parent.mesh.matrixWorld,this.xlateMat);
+            tRotMat.makeRotationFromEuler(this.parent.mesh.rotation);
+            tRotMat.multiply(this.rotMat);
         }
         else {
             tempMat.multiply(this.xlateMat);
+            tRotMat.multiply(this.rotMat);
         }
-        //tempMat.multiply(this.rotMat);
+        //tempMat.premultiply(this.rotMat);
         this.mesh.position.setFromMatrixPosition(tempMat);
         //this.mesh.matrixWorld.copy(tempMat);
         //this.mesh.updateMatrixWorld(true);
         // let q = new THREE.Quaternion().setFromRotationMatrix(tempMat);
         // this.mesh.quaternion.multiply(q);
-        this.mesh.rotation.setFromRotationMatrix(this.rotMat);
+        this.mesh.rotation.setFromRotationMatrix(tRotMat);
         //this.mesh.updateMatrixWorld(true);
         if(this.line){
             // this.line.position.setFromMatrixPosition(tempMat);
@@ -181,13 +186,13 @@ class Joint {
             //this.line.applyMatrix4(trmat);
             //this.line.updateMatrixWorld(true);
         }
-        for (let index = 0; index < this.joints.length; index++) {
-            const element = this.joints[index];
-            element.update();
-        }
-        // this.joints.forEach(element => {
+        // for (let index = 0; index < this.joints.length; index++) {
+        //     const element = this.joints[index];
         //     element.update();
-        // });
+        // }
+        this.joints.forEach(element => {
+            element.update();
+        });
     }
 
     setKeys(lineVals,nProcessed) {
@@ -276,19 +281,6 @@ class Joint {
     }
 }
 
-class Skeleton {
-    constructor(root_node) {
-        this.root = root_node;
-        this.objType = 'point';
-    }
-    addToRenderer(renderer) {
-
-    }
-}
-
-
-var file = '../Circle.bvh';
-
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
@@ -368,9 +360,6 @@ function readBVH(fileName) {
 
 const gui = new dat.gui.GUI();
 
-// console.log(root.print(0));
-// console.log(frameLines);
-
 let doesAnimate = {
     value: false,
 };
@@ -396,9 +385,9 @@ let jump_button = {Jump:function() {
     frameNum.value += 10;
 }};
 
-let bvhFile = {Filename:'Circle.bvh'};
+let bvhFile = {Filename:'Ambient.bvh'};
 
-let bvhStruct = null;
+let bvhStruct = readBVH(bvhFile.Filename);
 
 let load_button = {Load:function() {
     if(bvhStruct) {
@@ -407,13 +396,20 @@ let load_button = {Load:function() {
     bvhStruct = readBVH(bvhFile.Filename);
 }};
 
+let stick_camera = {Stick_to_camera: false};
+
+let stick_cam_button = {Stick_to_camera:function(){
+    stick_camera.Stick_to_camera = !stick_camera.Stick_to_camera;
+}};
+
 
 gui.add(animate_button,'Animate');
 gui.add(step_button,'Step');
 gui.add(jump_button,'Jump');
 gui.add(reset_button,'Reset');
-gui.add(bvhFile,'Filename',['Circle.bvh','Ambient.bvh','Jog.bvh','Sit.bvh']);
+gui.add(bvhFile,'Filename',['Ambient.bvh','Circle.bvh','Example1.bvh','Jog.bvh','Sit.bvh','Sneak.bvh','wave.bvh']);
 gui.add(load_button,'Load');
+gui.add(stick_cam_button,'Stick_to_camera');
 
 let initTime = Date.now();
 let timeWarp = {Warp: 1};
@@ -437,8 +433,8 @@ function animate() {
             }
         }
         // root.joints[0].line.rotation.x += 0.1;
-        // let rotStep = new THREE.Matrix4().makeRotationX(0.1);
-        // root.joints[0].rotMat.multiply(rotStep);
+        // let rotStep = new THREE.Matrix4().makeRotationY(0.1);
+        // bvhStruct.root.rotMat.multiply(rotStep);
         
         if(!doesAnimate.value && step.value && frameNum.value < bvhStruct.frameLines.length) {
             let keyVals = bvhStruct.frameLines[frameNum.value].trim().split('\t');
@@ -449,8 +445,12 @@ function animate() {
         //root.xlateMat.premultiply(new THREE.Matrix4().makeTranslation(0.1,0,0));
         bvhStruct.root.update();
 
-        camera.position.copy(bvhStruct.root.mesh.position);
-        camera.position.add(new THREE.Vector3(0,0,400));
+        if(stick_camera.Stick_to_camera){
+            camera.position.copy(bvhStruct.root.mesh.position);
+            camera.position.add(new THREE.Vector3(0,0,400));
+        } else {
+            camera.lookAt(bvhStruct.root.mesh.position);
+        }
 
     }
     requestAnimationFrame( animate );
