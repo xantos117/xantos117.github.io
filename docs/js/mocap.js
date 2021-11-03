@@ -14,7 +14,7 @@ class EndSite {
         this.offset.y = parseFloat(offsetVec[1]);
         this.offset.z = parseFloat(offsetVec[2]);
         this.parent = parent;
-        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshNormalMaterial());
+        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshNormalMaterial());
         this.xlateMat = new THREE.Matrix4();
         this.rotMat = new THREE.Matrix4();
         this.xlateMat.makeTranslation(this.offset.x,this.offset.y,this.offset.z);
@@ -47,37 +47,6 @@ class EndSite {
         this.line.quaternion.setFromUnitVectors(axis,dirVec.clone().normalize());
     }
     setKeys(lineVals,nProcessed) {
-        // let curVal = nProcessed;
-        // let tMat = new THREE.Matrix4();
-        // let rMat = new THREE.Matrix4();
-        // for (let index = 0; index < this.channels.length; index++) {
-        //     const chanName = this.channels[index];
-        //     const value = parseFloat(lineVals[curVal+index]);
-        //     let nMat = new THREE.Matrix4();
-        //     switch(chanName){
-        //         case 'Xposition':
-        //             nMat.makeTranslation(value,0,0);
-        //             tMat.multiply(nMat);
-        //         case 'Yposition':
-        //             nMat.makeTranslation(0,value,0);
-        //             tMat.multiply(nMat);
-        //         case 'Zposition':
-        //             nMat.makeTranslation(0,0,value);
-        //             tMat.multiply(nMat);
-        //         case 'Xrotation':
-        //             nMat.makeRotationX(value);
-        //             rMat.multiply(nMat);
-        //         case 'Yrotation':
-        //             nMat.makeRotationY(value);
-        //             rMat.multiply(nMat);
-        //         case 'Zrotation':
-        //             nMat.makeRotationZ(value);
-        //             rMat.multiply(nMat);
-        //     }  
-        // }
-        // this.rotMat.copy(rMat);
-        // this.xlateMat.copy(tMat);
-        // nProcessed += (this.channels.length-1);
 
         return nProcessed;
     }
@@ -107,7 +76,7 @@ class Joint {
         this.channels = [];
         this.joints = [];
         this.parent = parent;
-        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshNormalMaterial());
+        this.mesh = new THREE.Mesh(new THREE.BoxGeometry(2,2,2), new THREE.MeshNormalMaterial());
         this.line = null;
         this.xlateMat = new THREE.Matrix4();
         this.rotMat = new THREE.Matrix4();
@@ -447,9 +416,9 @@ gui.add(bvhFile,'Filename',['Circle.bvh','Ambient.bvh','Jog.bvh','Sit.bvh']);
 gui.add(load_button,'Load');
 
 let initTime = Date.now();
-let timeWarp = {value: 1};
+let timeWarp = {Warp: 1};
 
-gui.add(timeWarp,'value');
+gui.add(timeWarp,'Warp',0.1,2).step(0.1);
 
 function degreesToRadians(degrees)
 {
@@ -461,7 +430,7 @@ function animate() {
     if(bvhStruct){
         let curFrame = (Date.now() - initTime)/1000;
         if(doesAnimate.value) {
-            frameNum.value = Math.floor(curFrame/(bvhStruct.fTime*timeWarp.value));
+            frameNum.value = Math.floor(curFrame*timeWarp.Warp/bvhStruct.fTime);
             if(frameNum.value < bvhStruct.frameLines.length) {
                 let keyVals = bvhStruct.frameLines[frameNum.value].trim().split('\t');
                 bvhStruct.root.setKeys(keyVals,0);
