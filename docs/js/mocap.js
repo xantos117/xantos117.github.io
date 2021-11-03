@@ -27,6 +27,10 @@ class EndSite {
         let geo = new THREE.CylinderGeometry(1,1,this.mesh.position.distanceTo(this.parent.mesh.position),32);
         this.line = new THREE.Mesh(geo,material);
         this.line.applyMatrix4(tempMat);
+        this.mesh.updateMatrixWorld();
+        let nVec = new THREE.Vector3();
+        this.mesh.getWorldPosition(nVec);
+        this.min_y = nVec.y;
         scene.add(this.mesh);
         scene.add(this.line);
     }
@@ -80,6 +84,7 @@ class Joint {
         this.line = null;
         this.xlateMat = new THREE.Matrix4();
         this.rotMat = new THREE.Matrix4();
+        this.min_y = 0;
     }
     
     init(lines, start_index) {
@@ -113,6 +118,12 @@ class Joint {
             tempMat.multiply(this.xlateMat);
             this.mesh.applyMatrix4(tempMat);
         }
+        this.mesh.updateMatrixWorld();
+        let nVec = new THREE.Vector3();
+        this.mesh.getWorldPosition(nVec);
+        if(nVec.y < this.min_y) {
+            this.min_y = nVec.y;
+        }
         scene.add(this.mesh);
         cur_index++;
         let chanVals = lines[cur_index].trim().split('\t');
@@ -126,6 +137,9 @@ class Joint {
                 let j = new Joint(lineVals[1],this);
                 cur_index = j.init(lines,cur_index+2);
                 this.joints.push(j);
+                if(j.min_y < this.min_y) {
+                    this.min_y = j.min_y;
+                }
                 cur_index++;
             }
             else if(lineVals[0] == 'End') {
@@ -135,6 +149,9 @@ class Joint {
                 if(lineName == 'OFFSET') {
                     let e = new EndSite(offsetVals,this);
                     this.joints.push(e);
+                    if(e.min_y < this.min_y) {
+                        this.min_y = e.min_y;
+                    }
                 }
                 cur_index += 2;
             }
@@ -287,7 +304,7 @@ document.body.appendChild( renderer.domElement );
 
 
 camera.position.z = 400;
-// camera.position.y = 20;
+camera.position.y = 100;
 // camera.position.x = 100;
 // camera.rotation.y = degreesToRadians(30);
 /*
@@ -326,6 +343,7 @@ function readBVH(fileName) {
         nFrames: 0,
         fTime: 0,
         frameLines: [],
+        min_y: 0,
     }
     let buildHierarchy = false;
     let readFrames = false;
@@ -338,6 +356,12 @@ function readBVH(fileName) {
             if(lsplit[0] == 'ROOT') {
                 bvhStruct.root = new Joint(lsplit[1],null);
                 bvhStruct.line_num = bvhStruct.root.init(lines,bvhStruct.line_num+2);
+                bvhStruct.min_y = bvhStruct.root.min_y;
+                const geometry3 = new THREE.BoxGeometry(1000,1,1000);
+                const tablemat = new THREE.MeshBasicMaterial({color: 0x0a6c03})
+                const tableBase = new THREE.Mesh(geometry3, tablemat);
+                tableBase.position.y = bvhStruct.min_y;
+                scene.add(tableBase);
                 buildHierarchy = false;
             }
         }
@@ -453,6 +477,7 @@ function animate() {
         }
 
     }
+    
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
 }
