@@ -32,9 +32,10 @@ class EndSite {
     }
     update() {
         let tempMat = new THREE.Matrix4();
-        tempMat.multiplyMatrices(this.xlateMat,this.parent.mesh.matrixWorld);
+        tempMat.multiplyMatrices(this.parent.mesh.matrixWorld,this.xlateMat);
         this.mesh.position.setFromMatrixPosition(tempMat);
-        this.mesh.applyMatrix4(this.rotMat);
+        // this.mesh.applyMatrix4(this.rotMat);
+        this.mesh.rotation.setFromRotationMatrix(this.parent.rotMat);
         this.mesh.updateMatrixWorld(true);
         let pVec = new THREE.Vector3();
         let tVec = new THREE.Vector3();
@@ -44,6 +45,41 @@ class EndSite {
         let axis = new THREE.Vector3(0,1,0);
         this.line.position.copy(dirVec.clone().multiplyScalar(0.5)).add(pVec);
         this.line.quaternion.setFromUnitVectors(axis,dirVec.clone().normalize());
+    }
+    setKeys(lineVals,nProcessed) {
+        // let curVal = nProcessed;
+        // let tMat = new THREE.Matrix4();
+        // let rMat = new THREE.Matrix4();
+        // for (let index = 0; index < this.channels.length; index++) {
+        //     const chanName = this.channels[index];
+        //     const value = parseFloat(lineVals[curVal+index]);
+        //     let nMat = new THREE.Matrix4();
+        //     switch(chanName){
+        //         case 'Xposition':
+        //             nMat.makeTranslation(value,0,0);
+        //             tMat.multiply(nMat);
+        //         case 'Yposition':
+        //             nMat.makeTranslation(0,value,0);
+        //             tMat.multiply(nMat);
+        //         case 'Zposition':
+        //             nMat.makeTranslation(0,0,value);
+        //             tMat.multiply(nMat);
+        //         case 'Xrotation':
+        //             nMat.makeRotationX(value);
+        //             rMat.multiply(nMat);
+        //         case 'Yrotation':
+        //             nMat.makeRotationY(value);
+        //             rMat.multiply(nMat);
+        //         case 'Zrotation':
+        //             nMat.makeRotationZ(value);
+        //             rMat.multiply(nMat);
+        //     }  
+        // }
+        // this.rotMat.copy(rMat);
+        // this.xlateMat.copy(tMat);
+        // nProcessed += (this.channels.length-1);
+
+        return nProcessed;
     }
     print(n_indent) {
         let tabs = '\t';
@@ -86,7 +122,7 @@ class Joint {
             this.mesh.getWorldPosition(tVec);
             this.parent.mesh.getWorldPosition(pVec);
             let dirVec = new THREE.Vector3().subVectors(tVec,pVec);
-            let geo = new THREE.CylinderGeometry(1,1,tVec.distanceTo(pVec),32);
+            let geo = new THREE.CylinderGeometry(0.5,0.5,tVec.distanceTo(pVec),32);
             this.line = new THREE.Mesh(geo,material);
             let axis = new THREE.Vector3(0,1,0);
             this.line.position.copy(dirVec.clone().multiplyScalar(0.5)).add(pVec);
@@ -129,9 +165,14 @@ class Joint {
     }
 
     update() {
+        //console.log("Updating "+this.name);
         let tempMat = new THREE.Matrix4();
+        this.mesh.rotation.set(0,0,0);
+        //this.mesh.updateMatrix();
+        this.mesh.updateMatrixWorld(true);
         if(this.parent) {
-            tempMat.multiplyMatrices(this.xlateMat,this.parent.mesh.matrixWorld);
+            this.line.updateMatrixWorld(true);
+            tempMat.multiplyMatrices(this.parent.mesh.matrixWorld,this.xlateMat);
         }
         else {
             tempMat.multiply(this.xlateMat);
@@ -142,11 +183,13 @@ class Joint {
         //this.mesh.updateMatrixWorld(true);
         // let q = new THREE.Quaternion().setFromRotationMatrix(tempMat);
         // this.mesh.quaternion.multiply(q);
-        this.mesh.applyMatrix4(this.rotMat);
-        this.mesh.updateMatrixWorld(true);
+        this.mesh.rotation.setFromRotationMatrix(this.rotMat);
+        //this.mesh.updateMatrixWorld(true);
         if(this.line){
             // this.line.position.setFromMatrixPosition(tempMat);
             // this.line.updateMatrixWorld(true);
+            this.line.rotation.set(0,0,0);
+            this.line.updateMatrix();
             let pVec = new THREE.Vector3();
             let tVec = new THREE.Vector3();
             this.mesh.getWorldPosition(tVec);
@@ -159,9 +202,60 @@ class Joint {
             //this.line.applyMatrix4(trmat);
             //this.line.updateMatrixWorld(true);
         }
-        this.joints.forEach(element => {
+        for (let index = 0; index < this.joints.length; index++) {
+            const element = this.joints[index];
             element.update();
-        });
+        }
+        // this.joints.forEach(element => {
+        //     element.update();
+        // });
+    }
+
+    setKeys(lineVals,nProcessed) {
+        let curVal = nProcessed;
+        this.xlateMat.makeTranslation(this.offset.x,this.offset.y,this.offset.z);
+        let tMat = new THREE.Matrix4();
+        let rMat = new THREE.Matrix4();
+        for (let index = 0; index < this.channels.length; index++) {
+            const chanName = this.channels[index];
+            const value = parseFloat(lineVals[curVal+index]);
+            let nMat = new THREE.Matrix4();
+            switch(chanName){
+                case 'Xposition':
+                    nMat.makeTranslation(value,0,0);
+                    tMat.multiply(nMat);
+                    break;
+                case 'Yposition':
+                    nMat.makeTranslation(0,value,0);
+                    tMat.multiply(nMat);
+                    break;
+                case 'Zposition':
+                    nMat.makeTranslation(0,0,value);
+                    tMat.multiply(nMat);
+                    break;
+                case 'Xrotation':
+                    nMat.makeRotationX(degreesToRadians(value));
+                    rMat.multiply(nMat);
+                    break;
+                case 'Yrotation':
+                    nMat.makeRotationY(degreesToRadians(value));
+                    rMat.multiply(nMat);
+                    break;
+                case 'Zrotation':
+                    nMat.makeRotationZ(degreesToRadians(value));
+                    rMat.multiply(nMat);
+                    break;
+            }  
+        }
+        this.rotMat.copy(rMat);
+        this.xlateMat.premultiply(tMat);
+        nProcessed += (this.channels.length);
+        for (let index = 0; index < this.joints.length; index++) {
+            const element = this.joints[index];
+            nProcessed = element.setKeys(lineVals,nProcessed);
+        }
+        return nProcessed;
+        
     }
 
     print(n_indent) {
@@ -196,7 +290,7 @@ class Skeleton {
 }
 
 
-var file = '../Jog.bvh.txt';
+var file = '../Circle.bvh';
 var rawFile = new XMLHttpRequest();
 var allText = 'ERROR';
 rawFile.open("GET", file, false);
@@ -224,8 +318,9 @@ document.body.appendChild( renderer.domElement );
 
 
 camera.position.z = 400;
-camera.position.y = 0;
-camera.position.x = 0;
+// camera.position.y = 20;
+// camera.position.x = 100;
+// camera.rotation.y = degreesToRadians(30);
 /*
 * Structure:
 * Root
@@ -240,6 +335,10 @@ camera.position.x = 0;
 */
 let line_num = 0;
 let root = null;
+let nFrames = 0;
+let fTime = 0;
+let readFrames = false;
+let frameLines = [];
 while(line_num < lines.length) {
     if(lines[line_num].trim() == "HIERARCHY") {
         buildHierarchy = true;
@@ -252,29 +351,92 @@ while(line_num < lines.length) {
             buildHierarchy = false;
         }
     }
-    line_num++;
     if(lines[line_num].trim() == 'MOTION') {
-        break;
+        line_num++;
+        let lsplit = lines[line_num].trim().split('\t');
+        nFrames = parseInt(lsplit[1]);
+        line_num++;
+        lsplit = lines[line_num].trim().split('\t');
+        fTime = parseFloat(lsplit[1]);
+        readFrames = true;
+    }else if(readFrames){
+        frameLines.push(lines[line_num]);
     }
+    line_num++;
 }
 
+const gui = new dat.gui.GUI();
+
 console.log(root.print(0));
+console.log(frameLines);
 
 let doesAnimate = {
     value: false,
 };
 
+let animate_button = {Animate:function() {
+    doesAnimate.value = true;
+    initTime = Date.now();
+}}
+
+let step = { value: false };
+let step_button = {Step:function(){
+    step.value = true;
+}};
+
+let frameNum = {value: 0};
+let reset_button = {Reset:function() {
+    step.value = false;
+    frameNum.value = 0;
+    doesAnimate.value = false;
+}};
+
+let jump_button = {Jump:function() {
+    frameNum.value += 10;
+}}
+
+let bvhFile = {Filename:'Circle.bvh'};
+
+
+gui.add(animate_button,'Animate');
+gui.add(step_button,'Step');
+gui.add(jump_button,'Jump');
+gui.add(reset_button,'Reset');
+gui.add(bvhFile,'Filename',['Circle.bvh','Ambient.bvh','Jog.bvh','Sit.bvh']);
+
+let initTime = Date.now();
+let timeWarp = 1;
+
+function degreesToRadians(degrees)
+{
+  var pi = Math.PI;
+  return degrees * (pi/180);
+}
+
 function animate() {
+    let curFrame = (Date.now() - initTime)/1000;
     if(doesAnimate.value) {
-        dt = Date.now() - frameTime;
-        dt = dt/1000;
-        frameTime = Date.now();
-        
+        frameNum.value = Math.floor(curFrame/(fTime*timeWarp));
+        if(frameNum.value < frameLines.length) {
+            let keyVals = frameLines[frameNum.value].trim().split('\t');
+            root.setKeys(keyVals,0);
+        }
     }
-    //root.joints[0].line.rotation.x += 0.1;
-    let rotStep = new THREE.Matrix4().makeRotationX(0.1);
-    root.joints[0].rotMat.multiply(rotStep);
+    // root.joints[0].line.rotation.x += 0.1;
+    // let rotStep = new THREE.Matrix4().makeRotationX(0.1);
+    // root.joints[0].rotMat.multiply(rotStep);
+    
+    if(!doesAnimate.value && step.value && frameNum.value < frameLines.length) {
+        let keyVals = frameLines[frameNum.value].trim().split('\t');
+        root.setKeys(keyVals,0);
+        step.value = false;
+        frameNum.value++;
+    }
+    //root.xlateMat.premultiply(new THREE.Matrix4().makeTranslation(0.1,0,0));
     root.update();
+
+    camera.position.copy(root.mesh.position);
+    camera.position.add(new THREE.Vector3(0,0,400));
 
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
