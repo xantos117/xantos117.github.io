@@ -88,6 +88,16 @@ class EndSite {
         let vStr = indentString + '\t' + this.offset + '\n'
         return nStr + vStr;
     }
+    remove() {
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
+        scene.remove(this.mesh);
+        this.line.geometry.dispose();
+        this.line.material.dispose();
+        scene.remove(this.line);
+        delete(this.mesh);
+        delete(this.line);
+    }
 }
 
 class Joint {
@@ -277,6 +287,24 @@ class Joint {
         jString += '\n';
         return nameStr + offsetString + chanString + jString;
     }
+    remove() {
+        this.mesh.geometry.dispose();
+        this.mesh.material.dispose();
+        scene.remove(this.mesh);
+        if(this.parent){
+            this.line.geometry.dispose();
+            this.line.material.dispose();
+            scene.remove(this.line);
+            delete(this.line);
+        }
+        delete(this.mesh);
+        for (let index = 0; index < this.joints.length; index++) {
+            const element = this.joints[index];
+            element.remove();
+            delete(this.joints[index]);
+        }
+        delete(this.joints);
+    }
 }
 
 class Skeleton {
@@ -291,26 +319,6 @@ class Skeleton {
 
 
 var file = '../Circle.bvh';
-var rawFile = new XMLHttpRequest();
-var allText = 'ERROR';
-rawFile.open("GET", file, false);
-rawFile.onreadystatechange = function ()
-{
-    if(rawFile.readyState === 4)
-    {
-        if(rawFile.status === 200 || rawFile.status == 0)
-        {
-            allText = rawFile.responseText;
-        }
-    }
-}
-rawFile.send(null);
-
-const lines = allText.split('\n');
-let braceStack = [];
-let buildHierarchy = false;
-let readAngles = false;
-
 
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize( window.innerWidth, window.innerHeight );
@@ -333,42 +341,66 @@ camera.position.z = 400;
 *   - Channels
 *   - N Joints
 */
-let line_num = 0;
-let root = null;
-let nFrames = 0;
-let fTime = 0;
-let readFrames = false;
-let frameLines = [];
-while(line_num < lines.length) {
-    if(lines[line_num].trim() == "HIERARCHY") {
-        buildHierarchy = true;
-    }
-    else if(buildHierarchy) {
-        let lsplit = lines[line_num].trim().split(' ');
-        if(lsplit[0] == 'ROOT') {
-            root = new Joint(lsplit[1],null);
-            line_num = root.init(lines,line_num+2);
-            buildHierarchy = false;
+function readBVH(fileName) {
+    let rawFile = new XMLHttpRequest();
+    let allText = 'ERROR';
+    rawFile.open("GET", fileName, false);
+    rawFile.onreadystatechange = function ()
+    {
+        if(rawFile.readyState === 4)
+        {
+            if(rawFile.status === 200 || rawFile.status == 0)
+            {
+                allText = rawFile.responseText;
+            }
         }
     }
-    if(lines[line_num].trim() == 'MOTION') {
-        line_num++;
-        let lsplit = lines[line_num].trim().split('\t');
-        nFrames = parseInt(lsplit[1]);
-        line_num++;
-        lsplit = lines[line_num].trim().split('\t');
-        fTime = parseFloat(lsplit[1]);
-        readFrames = true;
-    }else if(readFrames){
-        frameLines.push(lines[line_num]);
+    rawFile.send(null);
+
+    const lines = allText.split('\n');
+
+    let bvhStruct = {
+        line_num: 0,
+        root: null,
+        nFrames: 0,
+        fTime: 0,
+        frameLines: [],
     }
-    line_num++;
+    let buildHierarchy = false;
+    let readFrames = false;
+    while(bvhStruct.line_num < lines.length) {
+        if(lines[bvhStruct.line_num].trim() == "HIERARCHY") {
+            buildHierarchy = true;
+        }
+        else if(buildHierarchy) {
+            let lsplit = lines[bvhStruct.line_num].trim().split(' ');
+            if(lsplit[0] == 'ROOT') {
+                bvhStruct.root = new Joint(lsplit[1],null);
+                bvhStruct.line_num = bvhStruct.root.init(lines,bvhStruct.line_num+2);
+                buildHierarchy = false;
+            }
+        }
+        if(lines[bvhStruct.line_num].trim() == 'MOTION') {
+            bvhStruct.line_num++;
+            let lsplit = lines[bvhStruct.line_num].trim().split('\t');
+            bvhStruct.nFrames = parseInt(lsplit[1]);
+            bvhStruct.line_num++;
+            lsplit = lines[bvhStruct.line_num].trim().split('\t');
+            bvhStruct.fTime = parseFloat(lsplit[1]);
+            readFrames = true;
+        }else if(readFrames){
+            bvhStruct.frameLines.push(lines[bvhStruct.line_num]);
+        }
+        bvhStruct.line_num++;
+    }
+    return bvhStruct;
 }
+
 
 const gui = new dat.gui.GUI();
 
-console.log(root.print(0));
-console.log(frameLines);
+// console.log(root.print(0));
+// console.log(frameLines);
 
 let doesAnimate = {
     value: false,
@@ -393,9 +425,18 @@ let reset_button = {Reset:function() {
 
 let jump_button = {Jump:function() {
     frameNum.value += 10;
-}}
+}};
 
 let bvhFile = {Filename:'Circle.bvh'};
+
+let bvhStruct = null;
+
+let load_button = {Load:function() {
+    if(bvhStruct) {
+        bvhStruct.root.remove();
+    }
+    bvhStruct = readBVH(bvhFile.Filename);
+}};
 
 
 gui.add(animate_button,'Animate');
@@ -403,9 +444,12 @@ gui.add(step_button,'Step');
 gui.add(jump_button,'Jump');
 gui.add(reset_button,'Reset');
 gui.add(bvhFile,'Filename',['Circle.bvh','Ambient.bvh','Jog.bvh','Sit.bvh']);
+gui.add(load_button,'Load');
 
 let initTime = Date.now();
-let timeWarp = 1;
+let timeWarp = {value: 1};
+
+gui.add(timeWarp,'value');
 
 function degreesToRadians(degrees)
 {
@@ -414,30 +458,32 @@ function degreesToRadians(degrees)
 }
 
 function animate() {
-    let curFrame = (Date.now() - initTime)/1000;
-    if(doesAnimate.value) {
-        frameNum.value = Math.floor(curFrame/(fTime*timeWarp));
-        if(frameNum.value < frameLines.length) {
-            let keyVals = frameLines[frameNum.value].trim().split('\t');
-            root.setKeys(keyVals,0);
+    if(bvhStruct){
+        let curFrame = (Date.now() - initTime)/1000;
+        if(doesAnimate.value) {
+            frameNum.value = Math.floor(curFrame/(bvhStruct.fTime*timeWarp.value));
+            if(frameNum.value < bvhStruct.frameLines.length) {
+                let keyVals = bvhStruct.frameLines[frameNum.value].trim().split('\t');
+                bvhStruct.root.setKeys(keyVals,0);
+            }
         }
-    }
-    // root.joints[0].line.rotation.x += 0.1;
-    // let rotStep = new THREE.Matrix4().makeRotationX(0.1);
-    // root.joints[0].rotMat.multiply(rotStep);
-    
-    if(!doesAnimate.value && step.value && frameNum.value < frameLines.length) {
-        let keyVals = frameLines[frameNum.value].trim().split('\t');
-        root.setKeys(keyVals,0);
-        step.value = false;
-        frameNum.value++;
-    }
-    //root.xlateMat.premultiply(new THREE.Matrix4().makeTranslation(0.1,0,0));
-    root.update();
+        // root.joints[0].line.rotation.x += 0.1;
+        // let rotStep = new THREE.Matrix4().makeRotationX(0.1);
+        // root.joints[0].rotMat.multiply(rotStep);
+        
+        if(!doesAnimate.value && step.value && frameNum.value < bvhStruct.frameLines.length) {
+            let keyVals = bvhStruct.frameLines[frameNum.value].trim().split('\t');
+            bvhStruct.root.setKeys(keyVals,0);
+            step.value = false;
+            frameNum.value++;
+        }
+        //root.xlateMat.premultiply(new THREE.Matrix4().makeTranslation(0.1,0,0));
+        bvhStruct.root.update();
 
-    camera.position.copy(root.mesh.position);
-    camera.position.add(new THREE.Vector3(0,0,400));
+        camera.position.copy(bvhStruct.root.mesh.position);
+        camera.position.add(new THREE.Vector3(0,0,400));
 
+    }
     requestAnimationFrame( animate );
     renderer.render( scene, camera );
 }
