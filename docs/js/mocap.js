@@ -89,7 +89,7 @@ class Joint {
     
     init(lines, start_index) {
         let cur_index = start_index;
-        let offsetVec = lines[cur_index].trim().split('\t');
+        let offsetVec = lines[cur_index].trim().split(/[ \t]+/);
         this.offset.x = parseFloat(offsetVec[1]);
         this.offset.y = parseFloat(offsetVec[2]);
         this.offset.z = parseFloat(offsetVec[3]);
@@ -106,7 +106,11 @@ class Joint {
             this.mesh.getWorldPosition(tVec);
             this.parent.mesh.getWorldPosition(pVec);
             let dirVec = new THREE.Vector3().subVectors(tVec,pVec);
-            let geo = new THREE.CylinderGeometry(0.5,0.5,tVec.distanceTo(pVec),32);
+            let cylHeight = tVec.distanceTo(pVec);
+            if(isNaN(cylHeight)) {
+                cylHeight = 0.01;
+            }
+            let geo = new THREE.CylinderGeometry(0.5,0.5,cylHeight,32);
             this.line = new THREE.Mesh(geo,material);
             let axis = new THREE.Vector3(0,1,0);
             this.line.position.copy(dirVec.clone().multiplyScalar(0.5)).add(pVec);
@@ -126,7 +130,7 @@ class Joint {
         }
         scene.add(this.mesh);
         cur_index++;
-        let chanVals = lines[cur_index].trim().split('\t');
+        let chanVals = lines[cur_index].trim().split(/[ \t]+/);
         for(let i = 2;i<2+parseInt(chanVals[1]);i++) {
             this.channels.push(chanVals[i]);
         }
@@ -144,7 +148,7 @@ class Joint {
             }
             else if(lineVals[0] == 'End') {
                 cur_index += 2;
-                let offsetVals = lines[cur_index].trim().split('\t');
+                let offsetVals = lines[cur_index].trim().split(/[ \t]+/);
                 let lineName = offsetVals.shift();
                 if(lineName == 'OFFSET') {
                     let e = new EndSite(offsetVals,this);
@@ -322,7 +326,7 @@ camera.position.y = 100;
 function readBVH(fileName) {
     let rawFile = new XMLHttpRequest();
     let allText = 'ERROR';
-    rawFile.open("GET", fileName, false);
+    rawFile.open("GET", 'bvh/'+fileName, false);
     rawFile.onreadystatechange = function ()
     {
         if(rawFile.readyState === 4)
@@ -361,17 +365,19 @@ function readBVH(fileName) {
                 const tablemat = new THREE.MeshBasicMaterial({color: 0x0a6c03})
                 const tableBase = new THREE.Mesh(geometry3, tablemat);
                 tableBase.position.y = bvhStruct.min_y;
+                camera.position.z = 5 * Math.abs(bvhStruct.min_y);
+                camera.position.y = 2 * Math.abs(bvhStruct.min_y);
                 scene.add(tableBase);
                 buildHierarchy = false;
             }
         }
         if(lines[bvhStruct.line_num].trim() == 'MOTION') {
             bvhStruct.line_num++;
-            let lsplit = lines[bvhStruct.line_num].trim().split('\t');
+            let lsplit = lines[bvhStruct.line_num].trim().split(/[ \t]+/);
             bvhStruct.nFrames = parseInt(lsplit[1]);
             bvhStruct.line_num++;
-            lsplit = lines[bvhStruct.line_num].trim().split('\t');
-            bvhStruct.fTime = parseFloat(lsplit[1]);
+            lsplit = lines[bvhStruct.line_num].trim().split(/[ \t]+/);
+            bvhStruct.fTime = parseFloat(lsplit[2]);
             readFrames = true;
         }else if(readFrames){
             bvhStruct.frameLines.push(lines[bvhStruct.line_num]);
@@ -421,23 +427,50 @@ let load_button = {Load:function() {
 }};
 
 let stick_camera = {Stick_to_camera: false};
+let cam_dist = {distance: 400};
+let cam_height = {height: 100};
 
 let stick_cam_button = {Stick_to_camera:function(){
     stick_camera.Stick_to_camera = !stick_camera.Stick_to_camera;
 }};
+
+let fileList = [
+    'Ambient.bvh',
+    'Arms.bvh',
+    'Circle.bvh',
+    'Example1.bvh',
+    'Jog.bvh',
+    'karate-03-spin kick-yokoyama.bvh',
+    'karate-03-spin kick-yokoyama.bvh',
+    'karate-04-back spin kick 1-yokoyama.bvh',
+    'karate-05-back spin kick 2-yokoyama.bvh',
+    'karate-07-kakato otoshi-yokoyama.bvh',
+    'karate-12-double punch-yokoyama.bvh',
+    'Legs.bvh',
+    'Pick up.bvh',
+    'Sit.bvh',
+    'Sneak.bvh',
+    'Stand.bvh',
+    'tiptoe.bvh',
+    'turn.bvh',
+    'wave.bvh',
+]
+
 
 
 gui.add(animate_button,'Animate');
 gui.add(step_button,'Step');
 gui.add(jump_button,'Jump');
 gui.add(reset_button,'Reset');
-gui.add(bvhFile,'Filename',['Ambient.bvh','Circle.bvh','Example1.bvh','Jog.bvh','Sit.bvh','Sneak.bvh','wave.bvh']);
+gui.add(bvhFile,'Filename',fileList);
 gui.add(load_button,'Load');
 gui.add(stick_cam_button,'Stick_to_camera');
 
 let initTime = Date.now();
 let timeWarp = {Warp: 1};
 
+gui.add(cam_dist,'distance',10,1000).step(10);
+gui.add(cam_height,'height',10,1000).step(10);
 gui.add(timeWarp,'Warp',0.1,2).step(0.1);
 
 function degreesToRadians(degrees)
@@ -452,7 +485,7 @@ function animate() {
         if(doesAnimate.value) {
             frameNum.value = Math.floor(curFrame*timeWarp.Warp/bvhStruct.fTime);
             if(frameNum.value < bvhStruct.frameLines.length) {
-                let keyVals = bvhStruct.frameLines[frameNum.value].trim().split('\t');
+                let keyVals = bvhStruct.frameLines[frameNum.value].trim().split(/[ \t]+/);
                 bvhStruct.root.setKeys(keyVals,0);
             }
         }
@@ -461,7 +494,7 @@ function animate() {
         // bvhStruct.root.rotMat.multiply(rotStep);
         
         if(!doesAnimate.value && step.value && frameNum.value < bvhStruct.frameLines.length) {
-            let keyVals = bvhStruct.frameLines[frameNum.value].trim().split('\t');
+            let keyVals = bvhStruct.frameLines[frameNum.value].trim().split(/[ \t]+/);
             bvhStruct.root.setKeys(keyVals,0);
             step.value = false;
             frameNum.value++;
@@ -471,9 +504,11 @@ function animate() {
 
         if(stick_camera.Stick_to_camera){
             camera.position.copy(bvhStruct.root.mesh.position);
-            camera.position.add(new THREE.Vector3(0,0,400));
+            camera.position.add(new THREE.Vector3(0,0,cam_dist.distance));
         } else {
             camera.lookAt(bvhStruct.root.mesh.position);
+            camera.position.z = cam_dist.distance;
+            camera.position.y = cam_height.height;
         }
 
     }
