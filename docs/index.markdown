@@ -16,4 +16,5 @@ Some text here for testing?
 * [Animation using keyframes](keyframes.html)
 * [Billiards Animation](billiards.html)
 * [Motion Capture](mocap.html)
+* [Boids](Build_webgl/index.html)
 
