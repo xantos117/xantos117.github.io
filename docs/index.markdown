@@ -7,9 +7,9 @@ layout: home
 
 ### RIT CS MS Projects
 
-Some text here for testing?
+A webpage for hosting projects for my RIT Computer Animation course. 
 
-[About](about)
+[Personal Page](theolincoln.com)
 
 **CSCI 712:**
 * [Test of Three.js](anim_setup.html)
