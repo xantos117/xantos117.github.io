@@ -9,7 +9,7 @@ layout: home
 
 A webpage for hosting projects for my RIT Computer Animation course. 
 
-[Personal Page](theolincoln.com)
+[Personal Page](https://theolincoln.com/)
 
 **CSCI 712:**
 * [Test of Three.js](anim_setup.html)
