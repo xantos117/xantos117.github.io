@@ -17,4 +17,5 @@ A webpage for hosting projects for my RIT Computer Animation course.
 * [Billiards Animation](billiards.html)
 * [Motion Capture](mocap.html)
 * [Boids](Build_webgl/index.html)
+* [Watercolor](watercolor.html)
 
