@@ -85,6 +85,7 @@
             uniform sampler2D diagVecs;
             // (e0, u.x, u.y, rho)
             uniform sampler2D otherVecs;
+            uniform sampler2D paperTexture;
             uniform vec2 mousePos;
             uniform float screenWidth;
             uniform float screenHeight;
@@ -142,6 +143,7 @@
             uniform sampler2D diagVecs;
             // (e0, u.x, u.y, rho)
             uniform sampler2D otherVecs;
+            uniform sampler2D paperTexture;
             uniform vec2 mousePos;
             uniform float screenWidth;
             uniform float screenHeight;
@@ -199,6 +201,7 @@
             uniform sampler2D diagVecs;
             // (e0, u.x, u.y, rho)
             uniform sampler2D otherVecs;
+            uniform sampler2D paperTexture;
             uniform vec2 mousePos;
             uniform float screenWidth;
             uniform float screenHeight;
@@ -269,6 +272,7 @@
             uniform sampler2D diagVecs;
             // (e0, u.x, u.y, rho)
             uniform sampler2D otherVecs;
+            uniform sampler2D paperTexture;
             uniform vec2 mousePos;
             uniform float screenWidth;
             uniform float screenHeight;
@@ -329,6 +333,7 @@
             uniform sampler2D diagVecs;
             // (e0, u.x, u.y, rho)
             uniform sampler2D otherVecs;
+            uniform sampler2D paperTexture;
             uniform vec2 mousePos;
             uniform float screenWidth;
             uniform float screenHeight;
@@ -389,6 +394,7 @@
             uniform sampler2D diagVecs;
             // (e0, u.x, u.y, rho)
             uniform sampler2D otherVecs;
+            uniform sampler2D paperTexture;
             uniform vec2 mousePos;
             uniform float screenWidth;
             uniform float screenHeight;
@@ -412,8 +418,11 @@
             
             void main() {
                 vec4 otherVec = texture2D(otherVecs,vUv);
+                vec4 paperVec = texture2D(paperTexture,vUv);
                 float intens = min(otherVec.a,1.0);
-                gl_FragColor = vec4(vec3(intens),1);
+                vec4 lColor = mix(paperVec+vec4(1.),vec4(vec3(0.),1.),intens);
+                gl_FragColor = lColor;
+                //gl_FragColor = vec4(vec3(intens),1.);
                 //vec4 tVec = texture2D(diagVecs,vUv);
                 //gl_FragColor = vec4(tVec.rgb,1);
             }
