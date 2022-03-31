@@ -7,7 +7,7 @@ layout: home
 
 ### RIT CS MS Projects
 
-A webpage for hosting projects for my RIT Computer Animation course. 
+A webpage for hosting projects for my RIT Computer Science MS program. 
 
 [Personal Page](https://theolincoln.com/)
 
